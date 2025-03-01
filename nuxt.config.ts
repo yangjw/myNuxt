@@ -173,5 +173,11 @@ export default defineNuxtConfig({
   },
 
   // 错误处理
-  errorHandler: '~/error.vue'
+  errorHandler: '~/error.vue',
+
+  runtimeConfig: {
+    public: {
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || "https://your-site.com",
+    }
+  }
 })
