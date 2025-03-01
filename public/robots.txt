@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# 禁止爬虫访问 _nuxt 目录
+Disallow: /_nuxt/
+
+# 设置站点地图位置（如果你之后添加了站点地图）
+# Sitemap: https://your-domain.com/sitemap.xml
