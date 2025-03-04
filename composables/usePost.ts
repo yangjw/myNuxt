@@ -1,25 +1,22 @@
 export function usePost() {
-  const fetchMorePosts = async (
-    page: number,
-    category: string = 'recommend',
-    pageSize: number = 15
-  ) => {
+  const fetchMorePosts = async (page: number, category: string = 'recommend') => {
     // 模拟 API 请求延迟
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // 模拟数据
-    return Array.from({ length: pageSize }, (_, i) => ({
-      id: page * pageSize + i,
+    return Array.from({ length: 10 }, (_, i) => ({
+      id: page * 10 + i,
       title: `${category} - 第 ${page} 页的第 ${i + 1} 篇文章`,
-      image: `https://picsum.photos/400/600?random=${page * pageSize + i}`,
+      image: `https://picsum.photos/400/600?random=${page * 10 + i}`,
       author: {
-        name: `用户${page * pageSize + i}`,
-        avatar: `https://i.pravatar.cc/100?u=${page * pageSize + i}`,
+        name: `用户${page * 10 + i}`,
+        avatar: `https://i.pravatar.cc/100?u=${page * 10 + i}`,
       },
       likes: Math.floor(Math.random() * 1000),
       type: ["image", "video", "live"][Math.floor(Math.random() * 3)],
       date: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
       category,
+      description: `这是一段关于 ${category} 的示例描述内容...`,
     }));
   };
 

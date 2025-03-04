@@ -30,104 +30,20 @@ const categories = ref([
 // 当前选中的分类
 const currentCategory = ref("recommend");
 
-// 分页相关状态
-const loading = ref(false);
-const page = ref(1);
-const hasMore = ref(true);
-const pageSize = 15; // 每页显示15条数据
-const loadingRef = ref(null); // 用于观察加载更多元素
-
-// 监听滚动以添加阴影效果
-const categoryNav = ref(null);
-const isScrolled = ref(false);
-
-onMounted(() => {
-  // 分类导航阴影效果观察器
-  const navObserver = new IntersectionObserver(
-    ([entry]) => {
-      isScrolled.value = !entry.isIntersecting;
-    },
-    {
-      threshold: 1,
-      rootMargin: `-${window.innerWidth <= 768 ? 50 : 60}px 0px 0px 0px`,
-    }
-  );
-
-  if (categoryNav.value) {
-    navObserver.observe(categoryNav.value);
-  }
-
-  // 加载更多观察器
-  const loadMoreObserver = new IntersectionObserver(
-    ([entry]) => {
-      if (
-        entry.isIntersecting &&
-        !loading.value &&
-        hasMore.value &&
-        !searchQuery.value
-      ) {
-        loadMore();
-      }
-    },
-    {
-      rootMargin: "100px", // 提前100px触发加载
-    }
-  );
-
-  if (loadingRef.value) {
-    loadMoreObserver.observe(loadingRef.value);
-  }
-
-  onUnmounted(() => {
-    navObserver.disconnect();
-    loadMoreObserver.disconnect();
-  });
-});
-
-// 修改加载更多函数
-const loadMore = async () => {
-  if (loading.value || !hasMore.value) return;
-
+// 监听分类变化并重新加载数据
+watch(currentCategory, async newCategory => {
   try {
+    // 重置页码和数据
+    page.value = 1;
     loading.value = true;
-    const newPosts = await fetchMorePosts(
-      page.value + 1,
-      currentCategory.value,
-      pageSize
-    );
+    posts.value = [];
 
-    if (newPosts.length < pageSize) {
-      hasMore.value = false;
-    }
-
-    posts.value.push(...newPosts);
-    page.value++;
-  } catch (error) {
-    console.error("加载失败:", error);
-    hasMore.value = false;
-  } finally {
-    loading.value = false;
-  }
-};
-
-// 重置分页状态
-const resetPagination = () => {
-  page.value = 1;
-  hasMore.value = true;
-  posts.value = [];
-};
-
-// 修改分类切换处理
-watch(currentCategory, async () => {
-  try {
-    resetPagination();
-    loading.value = true;
-    const newPosts = await fetchMorePosts(1, currentCategory.value, pageSize);
+    // 加载新分类的数据
+    const newPosts = await fetchMorePosts(1, newCategory);
     posts.value = newPosts;
-    hasMore.value = newPosts.length === pageSize;
+    hasMore.value = true;
   } catch (error) {
     console.error("加载分类数据失败:", error);
-    hasMore.value = false;
   } finally {
     loading.value = false;
   }
@@ -140,6 +56,14 @@ const { fetchMorePosts } = usePost();
 // 日期格式化函数
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("zh-CN");
+};
+
+// 格式化数字
+const formatNumber = (num: number) => {
+  if (num >= 10000) {
+    return (num / 10000).toFixed(1) + "w";
+  }
+  return num.toString();
 };
 
 // 在组件挂载时加载 SEO 配置
@@ -237,6 +161,32 @@ const applyFilters = () => {
   // 实现筛选逻辑
 };
 
+// 无限滚动相关
+const loading = ref(false);
+const page = ref(1);
+const hasMore = ref(true);
+
+// 修改 loadMore 函数以支持分类
+const loadMore = async () => {
+  if (loading.value || !hasMore.value) return;
+
+  try {
+    loading.value = true;
+    // 加载更多数据时传入当前分类
+    const newPosts = await fetchMorePosts(
+      page.value + 1,
+      currentCategory.value
+    );
+    posts.value.push(...newPosts);
+    page.value++;
+    hasMore.value = newPosts.length > 0;
+  } catch (error) {
+    console.error("加载失败:", error);
+  } finally {
+    loading.value = false;
+  }
+};
+
 // 计算属性：过滤后的帖子列表
 const filteredPosts = computed(() => {
   let result = [...posts.value];
@@ -273,196 +223,205 @@ const handleCategoryClick = (categoryId: string) => {
 </script>
 
 <template>
-  <div class="explore-container">
-    <!-- 搜索栏 -->
-    <div class="search-bar">
-      <div class="search-input">
+  <div class="home-container">
+    <!-- 分类导航 -->
+    <nav class="categories-nav">
+      <button
+        v-for="category in categories"
+        :key="category.id"
+        :class="['category-btn', { active: currentCategory === category.id }]"
+        @click="currentCategory = category.id"
+      >
+        {{ category.name }}
+      </button>
+    </nav>
+
+    <!-- 搜索和筛选 -->
+    <div class="search-filter-bar">
+      <div class="search-box">
         <input
-          v-model="searchQuery"
           type="text"
-          placeholder="搜索你感兴趣的内容"
+          v-model="searchQuery"
           @input="handleSearch"
+          placeholder="搜索..."
         />
-        <button v-if="searchQuery" class="clear-btn" @click="clearSearch">
+        <button v-if="searchQuery" @click="clearSearch" class="clear-btn">
           ×
-        </button>
-        <button class="search-btn">
-          <span v-if="isSearching" class="searching-icon">⌛</span>
-          <span v-else class="search-icon">🔍</span>
         </button>
       </div>
 
-      <!-- 筛选按钮 -->
       <button class="filter-btn" @click="showFilter = true">
-        筛选 <span class="filter-icon">⚡</span>
+        筛选
+        <span class="filter-count" v-if="selectedTypes.length">
+          {{ selectedTypes.length }}
+        </span>
       </button>
     </div>
 
-    <!-- 分类导航 -->
-    <nav
-      ref="categoryNav"
-      class="category-nav"
-      :class="{
-        'hide-nav': searchQuery,
-        scrolled: isScrolled,
-      }"
-    >
-      <div class="nav-scroll">
-        <button
-          v-for="category in categories"
-          :key="category.id"
-          :class="['category-btn', { active: currentCategory === category.id }]"
-          @click="handleCategoryClick(category.id)"
-        >
-          {{ category.name }}
-        </button>
-      </div>
-    </nav>
-
     <!-- 搜索结果 -->
-    <div v-if="searchQuery" class="content-section">
-      <div v-if="isSearching" class="loading-state">
-        <div class="loading-spinner"></div>
-        <span>搜索中...</span>
-      </div>
-
-      <div v-else-if="searchResults.length > 0" class="search-results">
-        <div class="section-header">
-          <h2>搜索结果</h2>
-          <button class="clear-search text-btn" @click="clearSearch">
-            清除搜索
-          </button>
-        </div>
-        <div class="results-grid">
-          <div
-            v-for="result in searchResults"
-            :key="result.id"
-            class="result-card"
-          >
-            <a
-              :href="`/posts/${result.id}`"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="card-link"
-            >
-              <div class="result-image">
-                <img :src="result.image" :alt="result.title" loading="lazy" />
-              </div>
-              <div class="result-content">
-                <h3 class="result-title">{{ result.title }}</h3>
-                <p class="result-description">{{ result.description }}</p>
-                <div class="result-meta">
-                  <div class="result-author">
-                    <img
-                      :src="result.author.avatar"
-                      :alt="result.author.name"
-                      class="author-avatar"
-                    />
-                    <span class="author-name">{{ result.author.name }}</span>
-                  </div>
-                  <span class="result-likes">{{ result.likes }}赞</span>
-                </div>
-              </div>
-            </a>
+    <div v-if="searchQuery && !isSearching" class="search-results">
+      <div class="content-grid">
+        <NuxtLink
+          v-for="result in searchResults"
+          :key="result.id"
+          :to="`/posts/${result.id}`"
+          class="post-card"
+          target="_blank"
+        >
+          <div class="post-image">
+            <img :src="result.image" :alt="result.title" loading="lazy" />
+            <span :class="['post-type', result.type]">
+              {{
+                result.type === "video"
+                  ? "视频"
+                  : result.type === "live"
+                  ? "直播"
+                  : "图文"
+              }}
+            </span>
           </div>
-        </div>
-      </div>
-
-      <div v-else class="no-results">
-        <p>未找到与"{{ searchQuery }}"相关的内容</p>
-        <button class="clear-search" @click="clearSearch">清除搜索</button>
+          <div class="post-content">
+            <h3 class="post-title">{{ result.title }}</h3>
+            <div class="post-meta">
+              <div class="author-info">
+                <img
+                  :src="result.author.avatar"
+                  :alt="result.author.name"
+                  class="author-avatar"
+                />
+                <span>{{ result.author.name }}</span>
+              </div>
+              <div class="post-stats">
+                <span>{{ formatNumber(result.likes) }}赞</span>
+              </div>
+            </div>
+          </div>
+        </NuxtLink>
       </div>
     </div>
 
-    <!-- 主要内容区 -->
-    <div v-else class="content-section">
-      <div
-        class="content-grid"
-        v-infinite-scroll="loadMore"
-        infinite-scroll-disabled="loading"
-        infinite-scroll-distance="10"
+    <!-- 主内容区 -->
+    <div
+      v-else
+      class="content-grid"
+      v-infinite-scroll="loadMore"
+      infinite-scroll-disabled="loading"
+      infinite-scroll-distance="10"
+    >
+      <NuxtLink
+        v-for="post in filteredPosts"
+        :key="post.id"
+        :to="`/posts/${post.id}`"
+        class="post-card"
+        target="_blank"
       >
-        <div v-for="post in filteredPosts" :key="post.id" class="post-card">
-          <a
-            :href="`/posts/${post.id}`"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="card-link"
-          >
-            <div class="post-image">
-              <img :src="post.image" :alt="post.title" loading="lazy" />
+        <div class="post-image">
+          <img :src="post.image" :alt="post.title" loading="lazy" />
+          <span :class="['post-type', post.type]">
+            {{
+              post.type === "video"
+                ? "视频"
+                : post.type === "live"
+                ? "直播"
+                : "图文"
+            }}
+          </span>
+        </div>
+        <div class="post-content">
+          <h3 class="post-title">{{ post.title }}</h3>
+          <div class="post-meta">
+            <div class="author-info">
+              <img
+                :src="post.author.avatar"
+                :alt="post.author.name"
+                class="author-avatar"
+              />
+              <span>{{ post.author.name }}</span>
             </div>
-            <div class="post-content">
-              <h3 class="post-title">{{ post.title }}</h3>
-              <div class="post-author">
-                <img
-                  :src="post.author.avatar"
-                  :alt="post.author.name"
-                  class="author-avatar"
-                />
-                <span class="author-name">{{ post.author.name }}</span>
-                <span class="post-likes">{{ post.likes }}赞</span>
-              </div>
+            <div class="post-stats">
+              <span>{{ formatNumber(post.likes) }}赞</span>
             </div>
-          </a>
+          </div>
+        </div>
+      </NuxtLink>
+    </div>
+
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-more">
+      <div class="loading-spinner"></div>
+      <span>加载中...</span>
+    </div>
+
+    <!-- 筛选弹窗 -->
+    <div v-if="showFilter" class="filter-modal">
+      <div class="filter-content">
+        <h3>筛选</h3>
+
+        <div class="filter-section">
+          <h4>排序方式</h4>
+          <div class="sort-options">
+            <label>
+              <input type="radio" v-model="sortBy" value="latest" name="sort" />
+              最新
+            </label>
+            <label>
+              <input
+                type="radio"
+                v-model="sortBy"
+                value="popular"
+                name="sort"
+              />
+              最热
+            </label>
+          </div>
         </div>
 
-        <!-- 加载状态 -->
-        <div
-          v-if="!searchQuery"
-          ref="loadingRef"
-          class="load-more"
-          :class="{ 'no-more': !hasMore }"
-        >
-          <template v-if="loading">
-            <div class="loading-spinner"></div>
-            <span>加载中...</span>
-          </template>
-          <template v-else-if="hasMore">
-            <span>向下滚动加载更多</span>
-          </template>
-          <template v-else>
-            <span>没有更多内容了</span>
-          </template>
+        <div class="filter-section">
+          <h4>内容类型</h4>
+          <div class="type-options">
+            <label v-for="type in contentTypes" :key="type.value">
+              <input
+                type="checkbox"
+                v-model="selectedTypes"
+                :value="type.value"
+              />
+              {{ type.label }}
+            </label>
+          </div>
         </div>
+
+        <div class="filter-actions">
+          <button class="reset-btn" @click="resetFilters">重置</button>
+          <button class="apply-btn" @click="applyFilters">确定</button>
+        </div>
+
+        <button class="close-btn" @click="showFilter = false">×</button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.explore-container {
-  max-width: 1200px;
+.home-container {
+  max-width: 1800px;
   margin: 0 auto;
   padding: 20px;
 }
 
-.category-nav {
+.categories-nav {
   position: sticky;
-  top: var(--header-height, 60px);
+  top: 0;
   background: white;
   padding: 10px 0;
   margin-bottom: 20px;
-  z-index: 90;
+  z-index: 100;
   border-bottom: 1px solid #eee;
-  transition: transform 0.3s, opacity 0.3s;
+  transition: opacity 0.3s, transform 0.3s;
 }
 
-.category-nav::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -10px;
-  height: 10px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), transparent);
+.categories-nav.hide-nav {
+  opacity: 0.5;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.category-nav.scrolled::after {
-  opacity: 1;
 }
 
 .nav-scroll {
@@ -472,28 +431,10 @@ const handleCategoryClick = (categoryId: string) => {
   padding: 0 20px 10px;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
 }
 
-.nav-scroll::before,
-.nav-scroll::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 10px;
-  width: 20px;
-  pointer-events: none;
-}
-
-.nav-scroll::before {
-  left: 0;
-  background: linear-gradient(to right, white, transparent);
-}
-
-.nav-scroll::after {
-  right: 0;
-  background: linear-gradient(to left, white, transparent);
+.nav-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .category-btn {
@@ -527,26 +468,32 @@ const handleCategoryClick = (categoryId: string) => {
 
 .content-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
   padding: 20px;
-  margin-bottom: 20px;
+  max-width: 1800px;
+  margin: 0 auto;
 }
 
 .post-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: transform 0.3s ease;
 }
 
 .post-card:hover {
   transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .post-image {
   position: relative;
+  width: 100%;
   padding-top: 133.33%;
   overflow: hidden;
 }
@@ -565,20 +512,21 @@ const handleCategoryClick = (categoryId: string) => {
 }
 
 .post-title {
-  font-size: 0.95rem;
-  margin: 0 0 8px;
+  margin: 0;
+  font-size: 1rem;
   line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .post-author {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+  margin-top: 12px;
 }
 
 .author-avatar {
@@ -599,67 +547,46 @@ const handleCategoryClick = (categoryId: string) => {
   color: #999;
 }
 
+@media (max-width: 1800px) {
+  .content-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 @media (max-width: 1400px) {
   .content-grid {
-    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
-@media (max-width: 1200px) {
-  .content-grid {
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .content-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-    padding: 12px;
-  }
-
-  .post-content {
-    padding: 8px;
-  }
-
-  .post-title {
-    font-size: 0.9rem;
-  }
-
-  .category-nav {
-    top: var(--header-height-mobile, 50px);
-    padding: 8px 0;
-  }
-
-  .nav-scroll {
-    padding: 0 12px 8px;
-  }
-
-  .category-btn {
-    padding: 6px 12px;
-    font-size: 0.9rem;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .content-grid {
     grid-template-columns: 1fr;
+    padding: 12px;
   }
 }
 
 /* 搜索栏样式 */
-.search-bar {
+.search-filter-bar {
   display: flex;
-  gap: 10px;
+  gap: 16px;
   margin-bottom: 20px;
+  padding: 0 20px;
 }
 
-.search-input {
+.search-box {
   flex: 1;
   position: relative;
 }
 
-.search-input input {
+.search-box input {
   width: 100%;
   padding: 12px 40px 12px 16px;
   border: 1px solid #ddd;
@@ -668,20 +595,9 @@ const handleCategoryClick = (categoryId: string) => {
   transition: border-color 0.3s;
 }
 
-.search-input input:focus {
+.search-box input:focus {
   border-color: var(--primary-color);
   outline: none;
-}
-
-.search-btn {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
 }
 
 .filter-btn {
@@ -692,13 +608,54 @@ const handleCategoryClick = (categoryId: string) => {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 5px;
-  transition: all 0.3s;
+  gap: 8px;
 }
 
-.filter-btn:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
+.filter-count {
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+}
+
+/* 内容类型标签样式 */
+.post-type {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.post-type.video {
+  background: rgba(255, 87, 34, 0.8);
+}
+
+.post-type.live {
+  background: rgba(233, 30, 99, 0.8);
+}
+
+/* 作者信息样式 */
+.post-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.post-stats {
+  color: #999;
+  font-size: 0.9rem;
 }
 
 /* 筛选弹窗样式 */
@@ -765,26 +722,19 @@ const handleCategoryClick = (categoryId: string) => {
 }
 
 /* 加载更多样式 */
-.load-more {
-  text-align: center;
+.loading-more {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
   padding: 20px;
   color: #666;
-  font-size: 0.9rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  min-height: 100px; /* 确保有足够的高度被观察 */
-}
-
-.load-more.no-more {
-  color: #999;
-  padding: 40px 20px;
 }
 
 .loading-spinner {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border: 2px solid #f3f3f3;
   border-top: 2px solid var(--primary-color);
   border-radius: 50%;
