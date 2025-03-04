@@ -576,11 +576,11 @@ const handleRegister = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: var(--z-index-modal);
   animation: fadeIn 0.3s ease;
 }
 
@@ -592,6 +592,8 @@ const handleRegister = async () => {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   animation: slideIn 0.3s ease;
+  position: relative;
+  z-index: calc(var(--z-index-modal) + 1);
 }
 
 .login-modal-content {

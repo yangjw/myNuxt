@@ -343,7 +343,6 @@ const handleImageLoad = () => {
 
 <template>
   <div class="home-container">
-    <!-- 分类导航 -->
     <nav class="categories-nav">
       <button
         v-for="category in categories"
@@ -354,7 +353,6 @@ const handleImageLoad = () => {
         {{ category.name }}
       </button>
     </nav>
-
     <!-- 搜索和筛选 -->
     <div class="search-filter-bar">
       <div class="search-box">

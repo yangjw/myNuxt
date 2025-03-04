@@ -101,14 +101,14 @@ const handleLoginSuccess = userData => {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: var(--z-index-nav);
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .main-header {
   position: relative;
-  z-index: 1002;
+  z-index: 2;
   background: white;
   padding: 1rem;
   border-bottom: 1px solid #eee;
@@ -116,7 +116,7 @@ const handleLoginSuccess = userData => {
 
 .category-nav {
   position: relative;
-  z-index: 1001;
+  z-index: 1;
   background: white;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid #eee;
@@ -134,7 +134,7 @@ const handleLoginSuccess = userData => {
   position: absolute;
   top: 100%;
   right: 0;
-  z-index: 1003;
+  z-index: 1001;
   background: white;
   padding: 15px;
   border-radius: 8px;
