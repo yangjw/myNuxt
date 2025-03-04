@@ -40,6 +40,10 @@ export default defineNuxtConfig({
       headers: {
         'Access-Control-Allow-Methods': 'GET,HEAD,PUT,PATCH,POST,DELETE',
         'Access-Control-Allow-Origin': '*'
+      },
+      cache: {
+        maxAge: 3600,
+        staleMaxAge: 86400 // 1天
       }
     },
 
@@ -55,7 +59,8 @@ export default defineNuxtConfig({
         'X-Content-Type-Options': 'nosniff',
         'X-XSS-Protection': '1; mode=block',
         'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
-      }
+      },
+      middleware: ['auth']
     },
     
     // 高级缓存策略
@@ -73,6 +78,10 @@ export default defineNuxtConfig({
       static: true, // 永久缓存
       headers: {
         'Cache-Control': 'public, max-age=31536000, immutable'
+      },
+      cache: {
+        maxAge: 60, // 1分钟
+        staleMaxAge: 3600 // 1小时
       }
     },
     
@@ -115,7 +124,6 @@ export default defineNuxtConfig({
     options: {
       strict: true
     },
-    middleware: ['auth'],
     // 自定义 404 处理
     statusCode: {
       404: '~/pages/404.vue'
@@ -184,4 +192,21 @@ export default defineNuxtConfig({
   plugins: [
     { src: '~/plugins/infinite-scroll.ts', mode: 'client' }
   ],
+
+  nitro: {
+    routeRules: {
+      '/api/**': {
+        cache: {
+          maxAge: 3600,
+          staleMaxAge: 86400 // 1天
+        }
+      },
+      '/static/**': {
+        cache: {
+          maxAge: 60, // 1分钟
+          staleMaxAge: 3600 // 1小时
+        }
+      }
+    }
+  },
 })
