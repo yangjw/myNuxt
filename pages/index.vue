@@ -167,19 +167,46 @@ const loading = ref(false);
 const page = ref(1);
 const hasMore = ref(true);
 const error = ref(false);
+const loadingMore = ref(false);
+const isLoadingLocked = ref(false);
+
+// 预加载阈值
+const PRELOAD_THRESHOLD = 0.5;
+
+// 节流时间
+const THROTTLE_DELAY = 200;
+
+// 加载延迟时间
+const LOADING_DELAY = 800;
 
 // 修改 loadMore 函数
 const loadMore = async () => {
-  if (loading.value || !hasMore.value) return;
+  if (
+    loading.value ||
+    loadingMore.value ||
+    !hasMore.value ||
+    isLoadingLocked.value
+  )
+    return;
 
   try {
-    loading.value = true;
+    isLoadingLocked.value = true;
+    loadingMore.value = true;
     error.value = false;
 
+    const startTime = Date.now();
     const newPosts = await fetchMorePosts(
       page.value + 1,
       currentCategory.value
     );
+
+    // 计算剩余延迟时间
+    const elapsed = Date.now() - startTime;
+    if (elapsed < LOADING_DELAY) {
+      await new Promise(resolve =>
+        setTimeout(resolve, LOADING_DELAY - elapsed)
+      );
+    }
 
     if (newPosts.length > 0) {
       posts.value.push(...newPosts);
@@ -191,31 +218,60 @@ const loadMore = async () => {
     console.error("加载失败:", err);
     error.value = true;
   } finally {
-    loading.value = false;
+    loadingMore.value = false;
+    setTimeout(() => {
+      isLoadingLocked.value = false;
+    }, THROTTLE_DELAY);
   }
 };
 
 // 使用 Intersection Observer 监听滚动
 onMounted(() => {
+  let timeoutId: NodeJS.Timeout;
+
   const observer = new IntersectionObserver(
     entries => {
-      if (entries[0].isIntersecting && !loading.value && hasMore.value) {
-        loadMore();
+      const entry = entries[0];
+      if (
+        entry.isIntersecting &&
+        (entry.intersectionRatio > PRELOAD_THRESHOLD ||
+          entry.boundingClientRect.top <= window.innerHeight)
+      ) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          loadMore();
+        }, THROTTLE_DELAY);
       }
     },
     {
-      rootMargin: "100px",
-      threshold: 0.1,
+      rootMargin: "1000px",
+      threshold: PRELOAD_THRESHOLD,
     }
   );
 
-  // 监听加载更多的触发元素
-  const loadMoreTrigger = document.querySelector(".infinite-loader");
-  if (loadMoreTrigger) {
-    observer.observe(loadMoreTrigger);
+  const observeLastPost = () => {
+    const posts = document.querySelectorAll(".post-card");
+    if (posts.length > 0) {
+      const lastPosts = Array.from(posts).slice(-5);
+      lastPosts.forEach(post => {
+        observer.observe(post);
+      });
+    }
+  };
+
+  const postsContainer = document.querySelector(".posts-grid");
+  if (postsContainer) {
+    const mutationObserver = new MutationObserver(() => {
+      observer.disconnect();
+      observeLastPost();
+    });
+    mutationObserver.observe(postsContainer, { childList: true });
   }
 
+  observeLastPost();
+
   onUnmounted(() => {
+    clearTimeout(timeoutId);
     observer.disconnect();
   });
 });
@@ -460,6 +516,7 @@ const handleImageLoad = () => {
     <!-- 无限加载组件 -->
     <InfiniteLoader
       :loading="loading"
+      :loading-more="loadingMore"
       :no-more="!hasMore"
       :error="error"
       @retry="loadMore"

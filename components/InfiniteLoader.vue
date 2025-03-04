@@ -1,7 +1,7 @@
 <template>
   <div class="infinite-loader">
     <!-- 加载中状态 -->
-    <div v-if="loading" class="loading-state">
+    <div v-if="(loading || loadingMore) && !noMore" class="loading-state">
       <svg class="loading-icon" viewBox="0 0 24 24">
         <circle
           class="loading-circle"
@@ -13,7 +13,7 @@
           stroke-width="2"
         />
       </svg>
-      <span>加载中</span>
+      <span>{{ loading ? "加载中" : "加载更多..." }}</span>
     </div>
 
     <!-- 没有更多数据状态 -->
@@ -33,7 +33,7 @@
     </div>
 
     <!-- 加载失败状态 -->
-    <div v-if="!loading && error && !noMore" class="error-state">
+    <div v-if="error && !noMore" class="error-state">
       <span class="error-message">加载失败，请稍后再试</span>
       <button @click="$emit('retry')" class="retry-btn">重试</button>
     </div>
@@ -43,6 +43,10 @@
 <script setup lang="ts">
 defineProps({
   loading: {
+    type: Boolean,
+    default: false,
+  },
+  loadingMore: {
     type: Boolean,
     default: false,
   },
@@ -76,6 +80,7 @@ defineEmits(["retry"]);
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: opacity 0.3s;
 }
 
 .loading-icon {
@@ -88,6 +93,11 @@ defineEmits(["retry"]);
   stroke-dasharray: 60;
   stroke-dashoffset: 60;
   animation: dash 1.2s ease-in-out infinite;
+}
+
+.loading-state span {
+  min-width: 56px;
+  text-align: left;
 }
 
 /* 结束状态 */
