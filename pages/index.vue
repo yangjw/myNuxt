@@ -1,9 +1,8 @@
 <script setup lang="ts">
-// 定义基本的页面元数据
+// 页面元数据定义必须在最顶部
 definePageMeta({
   layout: "default",
 });
-
 // 使用 SEO composable
 const { seoMeta, seoTitle, seoDescription, loadSEO } = useSEO();
 const route = useRoute();
@@ -165,27 +164,55 @@ const applyFilters = () => {
 const loading = ref(false);
 const page = ref(1);
 const hasMore = ref(true);
+const observerTarget = ref(null); // 添加观察目标
 
-// 修改 loadMore 函数以支持分类
+// 修改 loadMore 函数
 const loadMore = async () => {
   if (loading.value || !hasMore.value) return;
 
   try {
     loading.value = true;
-    // 加载更多数据时传入当前分类
     const newPosts = await fetchMorePosts(
       page.value + 1,
       currentCategory.value
     );
-    posts.value.push(...newPosts);
-    page.value++;
-    hasMore.value = newPosts.length > 0;
+
+    if (newPosts.length > 0) {
+      posts.value.push(...newPosts);
+      page.value++;
+    } else {
+      hasMore.value = false;
+    }
   } catch (error) {
     console.error("加载失败:", error);
+    hasMore.value = false;
   } finally {
     loading.value = false;
   }
 };
+
+// 使用 Intersection Observer
+onMounted(() => {
+  const observer = new IntersectionObserver(
+    entries => {
+      if (entries[0].isIntersecting && !loading.value && hasMore.value) {
+        loadMore();
+      }
+    },
+    {
+      rootMargin: "100px", // 提前100px触发加载
+      threshold: 0.1,
+    }
+  );
+
+  if (observerTarget.value) {
+    observer.observe(observerTarget.value);
+  }
+
+  onUnmounted(() => {
+    observer.disconnect();
+  });
+});
 
 // 计算属性：过滤后的帖子列表
 const filteredPosts = computed(() => {
@@ -301,13 +328,7 @@ const handleCategoryClick = (categoryId: string) => {
     </div>
 
     <!-- 主内容区 -->
-    <div
-      v-else
-      class="content-grid"
-      v-infinite-scroll="loadMore"
-      infinite-scroll-disabled="loading"
-      infinite-scroll-distance="10"
-    >
+    <div class="content-grid">
       <NuxtLink
         v-for="post in filteredPosts"
         :key="post.id"
@@ -346,11 +367,16 @@ const handleCategoryClick = (categoryId: string) => {
       </NuxtLink>
     </div>
 
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-more">
-      <div class="loading-spinner"></div>
-      <span>加载中...</span>
+    <!-- 加载状态和观察目标 -->
+    <div ref="observerTarget" class="load-more-trigger" v-show="hasMore">
+      <div v-if="loading" class="loading-more">
+        <div class="loading-spinner"></div>
+        <span>加载中...</span>
+      </div>
     </div>
+
+    <!-- 无更多内容提示 -->
+    <div v-if="!hasMore && !loading" class="no-more">没有更多内容了</div>
 
     <!-- 筛选弹窗 -->
     <div v-if="showFilter" class="filter-modal">
@@ -721,9 +747,14 @@ const handleCategoryClick = (categoryId: string) => {
   color: #666;
 }
 
-/* 加载更多样式 */
+/* 加载更多相关样式 */
+.load-more-trigger {
+  width: 100%;
+  height: 20px;
+  margin: 20px 0;
+}
+
 .loading-more {
-  grid-column: 1 / -1;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -739,6 +770,13 @@ const handleCategoryClick = (categoryId: string) => {
   border-top: 2px solid var(--primary-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
+}
+
+.no-more {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-size: 0.9rem;
 }
 
 @keyframes spin {
