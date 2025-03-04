@@ -2,6 +2,15 @@
 const route = useRoute();
 const router = useRouter();
 
+// SEO 配置
+const { seoMeta, seoTitle, seoDescription } = useSEO();
+
+// 在组件挂载前获取 SEO 数据
+const { data: seoConfig } = await useFetch<SEOConfig>("/api/seo", {
+  query: { path: route.path },
+  server: true,
+});
+
 // 帖子数据
 const post = ref<any>(null);
 const loading = ref(true);
@@ -247,14 +256,15 @@ const formatDate = (dateString: string) => {
   });
 };
 
-// SEO 配置
+// 设置页面元数据
 useHead(() => ({
-  title: post.value ? `${post.value.title} - 我的小红书` : "加载中...",
+  title: seoTitle.value || `${post.value ? post.value.title : "加载中..."}`,
   meta: [
     {
       name: "description",
-      content: post.value?.content || "",
+      content: seoDescription.value || post.value?.content || "",
     },
+    ...seoMeta.value,
   ],
 }));
 </script>

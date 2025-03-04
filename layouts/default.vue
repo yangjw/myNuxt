@@ -13,7 +13,11 @@
 
           <!-- 右侧功能区 -->
           <div class="nav-right">
-            <NuxtLink to="/login" class="nav-link login-btn">登录</NuxtLink>
+            <!-- 登录按钮 - 点击打开弹框 -->
+            <button @click="showLoginModal = true" class="nav-link login-btn">
+              登录
+            </button>
+
             <!-- APP下载按钮和悬浮框 -->
             <div class="app-download-wrapper">
               <button
@@ -52,26 +56,37 @@
     <footer>
       <p>© 2024 我的 Nuxt 应用</p>
     </footer>
+
+    <!-- 登录弹框 -->
+    <LoginModal
+      :is-open="showLoginModal"
+      @close="showLoginModal = false"
+      @login-success="handleLoginSuccess"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import fallbackQR from "~/assets/images/qr-fallback.png";
 
-definePageMeta({
-  layout: "default",
-});
-
 const qrImage = ref(
   "https://pics4.baidu.com/feed/0b7b02087bf40ad1af32143b02550dd0abecce99.jpeg@f_auto?token=dcaa025ece8ec0990c6665d93326d780"
 );
+
+const showAppQR = ref(false);
+const showLoginModal = ref(false);
 
 const handleImageError = (e: Event) => {
   const img = e.target as HTMLImageElement;
   img.src = fallbackQR;
 };
 
-const showAppQR = ref(false);
+// 处理登录成功
+const handleLoginSuccess = userData => {
+  // 这里可以处理登录成功后的逻辑，比如存储用户信息
+  console.log("登录成功:", userData);
+  // 可以使用 Pinia 或其他状态管理来存储用户状态
+};
 </script>
 
 <style scoped>

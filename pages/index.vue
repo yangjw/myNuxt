@@ -10,6 +10,8 @@ const route = useRoute();
 // 导入所需的组件和函数
 import { usePost } from "~/composables/usePost";
 import { useDebouncedFn } from "~/composables/useDebounce";
+import InfiniteLoader from "~/components/InfiniteLoader.vue";
+import VideoModal from "~/components/VideoModal.vue";
 
 // 分类数据
 const categories = ref([
@@ -160,11 +162,11 @@ const applyFilters = () => {
   // 实现筛选逻辑
 };
 
-// 无限滚动相关
+// 状态管理
 const loading = ref(false);
 const page = ref(1);
 const hasMore = ref(true);
-const observerTarget = ref(null); // 添加观察目标
+const error = ref(false);
 
 // 修改 loadMore 函数
 const loadMore = async () => {
@@ -172,6 +174,8 @@ const loadMore = async () => {
 
   try {
     loading.value = true;
+    error.value = false;
+
     const newPosts = await fetchMorePosts(
       page.value + 1,
       currentCategory.value
@@ -183,15 +187,15 @@ const loadMore = async () => {
     } else {
       hasMore.value = false;
     }
-  } catch (error) {
-    console.error("加载失败:", error);
-    hasMore.value = false;
+  } catch (err) {
+    console.error("加载失败:", err);
+    error.value = true;
   } finally {
     loading.value = false;
   }
 };
 
-// 使用 Intersection Observer
+// 使用 Intersection Observer 监听滚动
 onMounted(() => {
   const observer = new IntersectionObserver(
     entries => {
@@ -200,13 +204,15 @@ onMounted(() => {
       }
     },
     {
-      rootMargin: "100px", // 提前100px触发加载
+      rootMargin: "100px",
       threshold: 0.1,
     }
   );
 
-  if (observerTarget.value) {
-    observer.observe(observerTarget.value);
+  // 监听加载更多的触发元素
+  const loadMoreTrigger = document.querySelector(".infinite-loader");
+  if (loadMoreTrigger) {
+    observer.observe(loadMoreTrigger);
   }
 
   onUnmounted(() => {
@@ -246,6 +252,36 @@ const handleCategoryClick = (categoryId: string) => {
     clearSearch();
   }
   currentCategory.value = categoryId;
+};
+
+// 视频弹框状态
+const showVideoModal = ref(false);
+const currentVideo = ref(null);
+
+// 处理帖子点击
+const handlePostClick = (post, event) => {
+  if (post.type === "live") {
+    // 直播类型跳转到详情页
+    window.open(`/live/${post.id}`, "_blank");
+  } else if (post.type === "video") {
+    // 视频类型显示弹窗
+    currentVideo.value = post;
+    showVideoModal.value = true;
+  } else {
+    // 图文类型跳转到详情页
+    window.open(`/posts/${post.id}`, "_blank");
+  }
+};
+
+// 图片加载完成后触发重排
+const handleImageLoad = () => {
+  // 使用 requestAnimationFrame 优化性能
+  requestAnimationFrame(() => {
+    const grid = document.querySelector(".masonry-grid");
+    if (grid) {
+      grid.style.opacity = "1";
+    }
+  });
 };
 </script>
 
@@ -297,7 +333,7 @@ const handleCategoryClick = (categoryId: string) => {
         >
           <div class="post-image">
             <img :src="result.image" :alt="result.title" loading="lazy" />
-            <span :class="['post-type', result.type]">
+            <div class="post-type-tag" :class="result.type">
               {{
                 result.type === "video"
                   ? "视频"
@@ -305,7 +341,7 @@ const handleCategoryClick = (categoryId: string) => {
                   ? "直播"
                   : "图文"
               }}
-            </span>
+            </div>
           </div>
           <div class="post-content">
             <h3 class="post-title">{{ result.title }}</h3>
@@ -327,18 +363,21 @@ const handleCategoryClick = (categoryId: string) => {
       </div>
     </div>
 
-    <!-- 主内容区 -->
-    <div class="content-grid">
-      <NuxtLink
+    <!-- 帖子列表 -->
+    <div class="posts-grid">
+      <div
         v-for="post in filteredPosts"
         :key="post.id"
-        :to="`/posts/${post.id}`"
-        class="post-card"
-        target="_blank"
+        class="post-card clickable"
+        @click="handlePostClick(post, $event)"
       >
+        <!-- 添加视频标识 -->
+        <div v-if="post.type === 'video'" class="video-badge">
+          <i class="video-icon">▶</i>
+        </div>
         <div class="post-image">
           <img :src="post.image" :alt="post.title" loading="lazy" />
-          <span :class="['post-type', post.type]">
+          <div class="post-type-tag" :class="post.type">
             {{
               post.type === "video"
                 ? "视频"
@@ -346,32 +385,25 @@ const handleCategoryClick = (categoryId: string) => {
                 ? "直播"
                 : "图文"
             }}
-          </span>
+          </div>
         </div>
+        <!-- 帖子内容 -->
         <div class="post-content">
           <h3 class="post-title">{{ post.title }}</h3>
-          <div class="post-meta">
+          <div class="post-info">
             <div class="author-info">
               <img
                 :src="post.author.avatar"
                 :alt="post.author.name"
                 class="author-avatar"
               />
-              <span>{{ post.author.name }}</span>
+              <span class="author-name">{{ post.author.name }}</span>
             </div>
             <div class="post-stats">
-              <span>{{ formatNumber(post.likes) }}赞</span>
+              <span>{{ formatNumber(post.likes) }} 赞</span>
             </div>
           </div>
         </div>
-      </NuxtLink>
-    </div>
-
-    <!-- 加载状态和观察目标 -->
-    <div ref="observerTarget" class="load-more-trigger" v-show="hasMore">
-      <div v-if="loading" class="loading-more">
-        <div class="loading-spinner"></div>
-        <span>加载中...</span>
       </div>
     </div>
 
@@ -424,6 +456,29 @@ const handleCategoryClick = (categoryId: string) => {
         <button class="close-btn" @click="showFilter = false">×</button>
       </div>
     </div>
+
+    <!-- 无限加载组件 -->
+    <InfiniteLoader
+      :loading="loading"
+      :no-more="!hasMore"
+      :error="error"
+      @retry="loadMore"
+    />
+
+    <!-- 视频播放弹框 -->
+    <VideoModal
+      v-if="currentVideo"
+      :is-open="showVideoModal"
+      :title="currentVideo.title"
+      :video-url="currentVideo.videoUrl"
+      :author="currentVideo.author"
+      :views="currentVideo.views"
+      :likes="currentVideo.likes"
+      :content="currentVideo.content"
+      :date="currentVideo.date"
+      :tags="currentVideo.tags"
+      @close="showVideoModal = false"
+    />
   </div>
 </template>
 
@@ -510,6 +565,9 @@ const handleCategoryClick = (categoryId: string) => {
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .post-card:hover {
@@ -520,7 +578,7 @@ const handleCategoryClick = (categoryId: string) => {
 .post-image {
   position: relative;
   width: 100%;
-  padding-top: 133.33%;
+  flex: 1;
   overflow: hidden;
 }
 
@@ -535,11 +593,13 @@ const handleCategoryClick = (categoryId: string) => {
 
 .post-content {
   padding: 12px;
+  background: #fff;
 }
 
 .post-title {
-  margin: 0;
-  font-size: 1rem;
+  font-size: 14px;
+  color: #333;
+  margin: 0 0 8px;
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -548,11 +608,16 @@ const handleCategoryClick = (categoryId: string) => {
   -webkit-box-orient: vertical;
 }
 
-.post-author {
+.post-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
+  justify-content: space-between;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .author-avatar {
@@ -563,9 +628,8 @@ const handleCategoryClick = (categoryId: string) => {
 }
 
 .author-name {
-  font-size: 0.9rem;
+  font-size: 12px;
   color: #666;
-  flex: 1;
 }
 
 .post-likes {
@@ -646,23 +710,29 @@ const handleCategoryClick = (categoryId: string) => {
 }
 
 /* 内容类型标签样式 */
-.post-type {
+.post-type-tag {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  left: 8px;
+  top: 8px;
   padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
   border-radius: 4px;
-  font-size: 0.8rem;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1;
 }
 
-.post-type.video {
-  background: rgba(255, 87, 34, 0.8);
+.post-type-tag.video {
+  background: rgba(255, 36, 66, 0.8);
 }
 
-.post-type.live {
-  background: rgba(233, 30, 99, 0.8);
+.post-type-tag.live {
+  background: rgba(64, 158, 255, 0.8);
+}
+
+.post-type-tag.image {
+  background: rgba(103, 194, 58, 0.8);
 }
 
 /* 作者信息样式 */
@@ -673,15 +743,9 @@ const handleCategoryClick = (categoryId: string) => {
   margin-top: 12px;
 }
 
-.author-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .post-stats {
+  font-size: 12px;
   color: #999;
-  font-size: 0.9rem;
 }
 
 /* 筛选弹窗样式 */
@@ -1028,5 +1092,97 @@ const handleCategoryClick = (categoryId: string) => {
 .post-title,
 .result-title {
   transition: color 0.3s;
+}
+
+/* 视频帖子样式 */
+.post-card {
+  position: relative;
+}
+
+.video-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.video-icon {
+  font-size: 14px;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  padding: 20px;
+  margin: 0 auto;
+  max-width: 1800px;
+}
+
+.post-card {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+  position: relative;
+  aspect-ratio: 3/4;
+}
+
+.post-image {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.post-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* 响应式布局 */
+@media (max-width: 1600px) {
+  .posts-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (max-width: 1200px) {
+  .posts-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .posts-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .posts-grid {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .posts-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
 }
 </style>

@@ -22,9 +22,26 @@ export default defineNuxtConfig({
   ],
 
   modules: [
-    '@nuxt/content',
-    '@nuxtjs/sitemap'
+    '@nuxtjs/sitemap',
+    '@nuxt/content'
   ],
+
+  // 内容模块配置
+  content: {
+    // 文档驱动模式
+    documentDriven: true,
+    // 高亮配置
+    highlight: {
+      theme: 'github-light'
+    },
+    // 内容目录
+    sources: ['content'],
+    // Markdown 配置
+    markdown: {
+      remarkPlugins: ['remark-gfm'],
+      rehypePlugins: []
+    }
+  },
 
   runtimeConfig: {
     public: {
@@ -52,6 +69,7 @@ export default defineNuxtConfig({
   sitemap: {
     hostname: process.env.NUXT_PUBLIC_SITE_URL || 'https://m.yixiaozu.com/'
   },
+  
   site: { url: 'https://m.yixiaozu.com/' },
 
   vite: {
