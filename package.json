@@ -16,6 +16,7 @@
         "@nuxtjs/security": "^0.0.0",
         "nuxt": "^3.15.4",
         "vue": "latest",
+        "vue-infinite-scroll": "^2.0.2",
         "vue-router": "latest",
         "vuex": "^4.0.2"
     },

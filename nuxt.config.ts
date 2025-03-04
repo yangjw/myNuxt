@@ -179,5 +179,9 @@ export default defineNuxtConfig({
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || "https://your-site.com",
     }
-  }
+  },
+
+  plugins: [
+    { src: '~/plugins/infinite-scroll.ts', mode: 'client' }
+  ],
 })
