@@ -54,6 +54,10 @@
 </template>
 
 <script setup lang="ts">
+// SEO 配置
+definePageMeta({
+  layout: "default",
+});
 const route = useRoute();
 const currentId = parseInt(route.params.id as string);
 
@@ -75,11 +79,6 @@ if (!article.value) {
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("zh-CN");
 };
-
-// SEO 配置
-definePageMeta({
-  layout: "default",
-});
 
 const { seoMeta, seoTitle, seoDescription, loadSEO } = useSEO();
 
