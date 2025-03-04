@@ -46,7 +46,7 @@
 
         <!-- 分类导航 -->
         <nav class="category-nav">
-          <slot name="category-nav" />
+          <slot name="category" />
         </nav>
       </div>
 

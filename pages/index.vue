@@ -342,198 +342,205 @@ const handleImageLoad = () => {
 </script>
 
 <template>
-  <div class="home-container">
-    <nav class="categories-nav">
-      <button
-        v-for="category in categories"
-        :key="category.id"
-        :class="['category-btn', { active: currentCategory === category.id }]"
-        @click="currentCategory = category.id"
-      >
-        {{ category.name }}
-      </button>
-    </nav>
-    <!-- 搜索和筛选 -->
-    <div class="search-filter-bar">
-      <div class="search-box">
-        <input
-          type="text"
-          v-model="searchQuery"
-          @input="handleSearch"
-          placeholder="搜索..."
-        />
-        <button v-if="searchQuery" @click="clearSearch" class="clear-btn">
-          ×
+  <div>
+    <div class="home-container">
+      <nav class="categories-nav">
+        <button
+          v-for="category in categories"
+          :key="category.id"
+          :class="['category-btn', { active: currentCategory === category.id }]"
+          @click="currentCategory = category.id"
+        >
+          {{ category.name }}
+        </button>
+      </nav>
+      <!-- 搜索和筛选 -->
+      <div class="search-filter-bar">
+        <div class="search-box">
+          <input
+            type="text"
+            v-model="searchQuery"
+            @input="handleSearch"
+            placeholder="搜索..."
+          />
+          <button v-if="searchQuery" @click="clearSearch" class="clear-btn">
+            ×
+          </button>
+        </div>
+
+        <button class="filter-btn" @click="showFilter = true">
+          筛选
+          <span class="filter-count" v-if="selectedTypes.length">
+            {{ selectedTypes.length }}
+          </span>
         </button>
       </div>
 
-      <button class="filter-btn" @click="showFilter = true">
-        筛选
-        <span class="filter-count" v-if="selectedTypes.length">
-          {{ selectedTypes.length }}
-        </span>
-      </button>
-    </div>
+      <!-- 搜索结果 -->
+      <div v-if="searchQuery && !isSearching" class="search-results">
+        <div class="content-grid">
+          <NuxtLink
+            v-for="result in searchResults"
+            :key="result.id"
+            :to="`/posts/${result.id}`"
+            class="post-card"
+            target="_blank"
+          >
+            <div class="post-image">
+              <img :src="result.image" :alt="result.title" loading="lazy" />
+              <div class="post-type-tag" :class="result.type">
+                {{
+                  result.type === "video"
+                    ? "视频"
+                    : result.type === "live"
+                    ? "直播"
+                    : "图文"
+                }}
+              </div>
+            </div>
+            <div class="post-content">
+              <h3 class="post-title">{{ result.title }}</h3>
+              <div class="post-meta">
+                <div class="author-info">
+                  <img
+                    :src="result.author.avatar"
+                    :alt="result.author.name"
+                    class="author-avatar"
+                  />
+                  <span>{{ result.author.name }}</span>
+                </div>
+                <div class="post-stats">
+                  <span>{{ formatNumber(result.likes) }}赞</span>
+                </div>
+              </div>
+            </div>
+          </NuxtLink>
+        </div>
+      </div>
 
-    <!-- 搜索结果 -->
-    <div v-if="searchQuery && !isSearching" class="search-results">
-      <div class="content-grid">
-        <NuxtLink
-          v-for="result in searchResults"
-          :key="result.id"
-          :to="`/posts/${result.id}`"
-          class="post-card"
-          target="_blank"
+      <!-- 帖子列表 -->
+      <div class="posts-grid">
+        <div
+          v-for="post in filteredPosts"
+          :key="post.id"
+          class="post-card clickable"
+          @click="handlePostClick(post, $event)"
         >
+          <!-- 添加视频标识 -->
+          <div v-if="post.type === 'video'" class="video-badge">
+            <i class="video-icon">▶</i>
+          </div>
           <div class="post-image">
-            <img :src="result.image" :alt="result.title" loading="lazy" />
-            <div class="post-type-tag" :class="result.type">
+            <img :src="post.image" :alt="post.title" loading="lazy" />
+            <div class="post-type-tag" :class="post.type">
               {{
-                result.type === "video"
+                post.type === "video"
                   ? "视频"
-                  : result.type === "live"
+                  : post.type === "live"
                   ? "直播"
                   : "图文"
               }}
             </div>
           </div>
+          <!-- 帖子内容 -->
           <div class="post-content">
-            <h3 class="post-title">{{ result.title }}</h3>
-            <div class="post-meta">
+            <h3 class="post-title">{{ post.title }}</h3>
+            <div class="post-info">
               <div class="author-info">
                 <img
-                  :src="result.author.avatar"
-                  :alt="result.author.name"
+                  :src="post.author.avatar"
+                  :alt="post.author.name"
                   class="author-avatar"
                 />
-                <span>{{ result.author.name }}</span>
+                <span class="author-name">{{ post.author.name }}</span>
               </div>
               <div class="post-stats">
-                <span>{{ formatNumber(result.likes) }}赞</span>
+                <span>{{ formatNumber(post.likes) }} 赞</span>
               </div>
             </div>
           </div>
-        </NuxtLink>
+        </div>
       </div>
-    </div>
 
-    <!-- 帖子列表 -->
-    <div class="posts-grid">
-      <div
-        v-for="post in filteredPosts"
-        :key="post.id"
-        class="post-card clickable"
-        @click="handlePostClick(post, $event)"
-      >
-        <!-- 添加视频标识 -->
-        <div v-if="post.type === 'video'" class="video-badge">
-          <i class="video-icon">▶</i>
-        </div>
-        <div class="post-image">
-          <img :src="post.image" :alt="post.title" loading="lazy" />
-          <div class="post-type-tag" :class="post.type">
-            {{
-              post.type === "video"
-                ? "视频"
-                : post.type === "live"
-                ? "直播"
-                : "图文"
-            }}
-          </div>
-        </div>
-        <!-- 帖子内容 -->
-        <div class="post-content">
-          <h3 class="post-title">{{ post.title }}</h3>
-          <div class="post-info">
-            <div class="author-info">
-              <img
-                :src="post.author.avatar"
-                :alt="post.author.name"
-                class="author-avatar"
-              />
-              <span class="author-name">{{ post.author.name }}</span>
-            </div>
-            <div class="post-stats">
-              <span>{{ formatNumber(post.likes) }} 赞</span>
+      <!-- 无更多内容提示 -->
+      <div v-if="!hasMore && !loading" class="no-more">没有更多内容了</div>
+
+      <!-- 筛选弹窗 -->
+      <div v-if="showFilter" class="filter-modal">
+        <div class="filter-content">
+          <h3>筛选</h3>
+
+          <div class="filter-section">
+            <h4>排序方式</h4>
+            <div class="sort-options">
+              <label>
+                <input
+                  type="radio"
+                  v-model="sortBy"
+                  value="latest"
+                  name="sort"
+                />
+                最新
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  v-model="sortBy"
+                  value="popular"
+                  name="sort"
+                />
+                最热
+              </label>
             </div>
           </div>
+
+          <div class="filter-section">
+            <h4>内容类型</h4>
+            <div class="type-options">
+              <label v-for="type in contentTypes" :key="type.value">
+                <input
+                  type="checkbox"
+                  v-model="selectedTypes"
+                  :value="type.value"
+                />
+                {{ type.label }}
+              </label>
+            </div>
+          </div>
+
+          <div class="filter-actions">
+            <button class="reset-btn" @click="resetFilters">重置</button>
+            <button class="apply-btn" @click="applyFilters">确定</button>
+          </div>
+
+          <button class="close-btn" @click="showFilter = false">×</button>
         </div>
       </div>
+
+      <!-- 无限加载组件 -->
+      <InfiniteLoader
+        :loading="loading"
+        :loading-more="loadingMore"
+        :no-more="!hasMore"
+        :error="error"
+        @retry="loadMore"
+      />
+
+      <!-- 视频播放弹框 -->
+      <VideoModal
+        v-if="currentVideo"
+        :is-open="showVideoModal"
+        :title="currentVideo.title"
+        :video-url="currentVideo.videoUrl"
+        :author="currentVideo.author"
+        :views="currentVideo.views"
+        :likes="currentVideo.likes"
+        :content="currentVideo.content"
+        :date="currentVideo.date"
+        :tags="currentVideo.tags"
+        @close="showVideoModal = false"
+      />
     </div>
-
-    <!-- 无更多内容提示 -->
-    <div v-if="!hasMore && !loading" class="no-more">没有更多内容了</div>
-
-    <!-- 筛选弹窗 -->
-    <div v-if="showFilter" class="filter-modal">
-      <div class="filter-content">
-        <h3>筛选</h3>
-
-        <div class="filter-section">
-          <h4>排序方式</h4>
-          <div class="sort-options">
-            <label>
-              <input type="radio" v-model="sortBy" value="latest" name="sort" />
-              最新
-            </label>
-            <label>
-              <input
-                type="radio"
-                v-model="sortBy"
-                value="popular"
-                name="sort"
-              />
-              最热
-            </label>
-          </div>
-        </div>
-
-        <div class="filter-section">
-          <h4>内容类型</h4>
-          <div class="type-options">
-            <label v-for="type in contentTypes" :key="type.value">
-              <input
-                type="checkbox"
-                v-model="selectedTypes"
-                :value="type.value"
-              />
-              {{ type.label }}
-            </label>
-          </div>
-        </div>
-
-        <div class="filter-actions">
-          <button class="reset-btn" @click="resetFilters">重置</button>
-          <button class="apply-btn" @click="applyFilters">确定</button>
-        </div>
-
-        <button class="close-btn" @click="showFilter = false">×</button>
-      </div>
-    </div>
-
-    <!-- 无限加载组件 -->
-    <InfiniteLoader
-      :loading="loading"
-      :loading-more="loadingMore"
-      :no-more="!hasMore"
-      :error="error"
-      @retry="loadMore"
-    />
-
-    <!-- 视频播放弹框 -->
-    <VideoModal
-      v-if="currentVideo"
-      :is-open="showVideoModal"
-      :title="currentVideo.title"
-      :video-url="currentVideo.videoUrl"
-      :author="currentVideo.author"
-      :views="currentVideo.views"
-      :likes="currentVideo.likes"
-      :content="currentVideo.content"
-      :date="currentVideo.date"
-      :tags="currentVideo.tags"
-      @close="showVideoModal = false"
-    />
   </div>
 </template>
 
