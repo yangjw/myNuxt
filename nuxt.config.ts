@@ -52,6 +52,7 @@ export default defineNuxtConfig({
   sitemap: {
     hostname: process.env.NUXT_PUBLIC_SITE_URL || 'https://m.yixiaozu.com/'
   },
+  site: { url: 'https://m.yixiaozu.com/' },
 
   vite: {
     css: {
