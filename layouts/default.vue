@@ -1,68 +1,71 @@
 <template>
   <div class="layout-container">
-    <!-- 顶部固定导航 -->
-    <div class="fixed-header">
-      <header class="main-header">
-        <nav class="nav-container">
-          <!-- 左侧导航链接 -->
-          <div class="nav-left">
-            <NuxtLink to="/" class="nav-link">首页</NuxtLink>
-            <NuxtLink to="/about" class="nav-link">关于我们</NuxtLink>
-            <NuxtLink to="/contact" class="nav-link">联系我们</NuxtLink>
-          </div>
+    <!-- 主要内容包装器 -->
+    <div class="content-wrapper">
+      <!-- 顶部固定导航 -->
+      <div class="fixed-header">
+        <header class="main-header">
+          <nav class="nav-container">
+            <!-- 左侧导航链接 -->
+            <div class="nav-left">
+              <NuxtLink to="/" class="nav-link">首页</NuxtLink>
+              <NuxtLink to="/about" class="nav-link">关于我们</NuxtLink>
+              <NuxtLink to="/contact" class="nav-link">联系我们</NuxtLink>
+            </div>
 
-          <!-- 右侧功能区 -->
-          <div class="nav-right">
-            <!-- 登录按钮 - 点击打开弹框 -->
-            <button @click="showLoginModal = true" class="nav-link login-btn">
-              登录
-            </button>
-
-            <!-- APP下载按钮和悬浮框 -->
-            <div class="app-download-wrapper">
-              <button
-                class="app-download-btn"
-                @mouseenter="showAppQR = true"
-                @mouseleave="showAppQR = false"
-              >
-                APP下载
+            <!-- 右侧功能区 -->
+            <div class="nav-right">
+              <!-- 登录按钮 - 点击打开弹框 -->
+              <button @click="showLoginModal = true" class="nav-link login-btn">
+                登录
               </button>
-              <div v-if="showAppQR" class="app-qr-popup">
-                <img
-                  :src="qrImage"
-                  alt="APP二维码"
-                  class="qr-code"
-                  loading="lazy"
-                  @error="handleImageError"
-                />
-                <p class="qr-text">扫码下载APP</p>
+
+              <!-- APP下载按钮和悬浮框 -->
+              <div class="app-download-wrapper">
+                <button
+                  class="app-download-btn"
+                  @mouseenter="showAppQR = true"
+                  @mouseleave="showAppQR = false"
+                >
+                  APP下载
+                </button>
+                <div v-if="showAppQR" class="app-qr-popup">
+                  <img
+                    :src="qrImage"
+                    alt="APP二维码"
+                    class="qr-code"
+                    loading="lazy"
+                    @error="handleImageError"
+                  />
+                  <p class="qr-text">扫码下载APP</p>
+                </div>
               </div>
             </div>
-          </div>
+          </nav>
+        </header>
+
+        <!-- 分类导航 -->
+        <nav class="category-nav">
+          <slot name="category-nav" />
         </nav>
-      </header>
+      </div>
 
-      <!-- 分类导航 -->
-      <nav class="category-nav">
-        <slot name="category-nav" />
-      </nav>
+      <!-- 主要内容 -->
+      <main class="main-content">
+        <slot />
+      </main>
+
+      <footer>
+        <p>© 2025</p>
+      </footer>
+
+      <!-- 登录弹框 -->
+      <LoginModal
+        :is-open="showLoginModal"
+        @close="showLoginModal = false"
+        @login-success="handleLoginSuccess"
+      />
     </div>
-
-    <!-- 主要内容 -->
-    <main class="main-content">
-      <slot />
-    </main>
-
-    <footer>
-      <p>© 2024 我的 Nuxt 应用</p>
-    </footer>
-
-    <!-- 登录弹框 -->
-    <LoginModal
-      :is-open="showLoginModal"
-      @close="showLoginModal = false"
-      @login-success="handleLoginSuccess"
-    />
   </div>
 </template>
 
@@ -96,12 +99,17 @@ const handleLoginSuccess = userData => {
   flex-direction: column;
 }
 
+.content-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
 .fixed-header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: var(--z-index-nav);
+  z-index: 100;
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -165,14 +173,14 @@ footer {
 }
 
 /* 响应式调整 */
-@media (max-width: 768px) {
-  .main-content {
-    margin-top: 140px; /* 移动端可能需要更大的间距 */
-  }
+/* @media (max-width: 768px)  */
 
-  .fixed-header {
-    position: fixed;
-  }
+.main-content {
+  margin-top: 60px; /* 移动端可能需要更大的间距 */
+}
+
+.fixed-header {
+  position: fixed;
 }
 
 /* 添加加载动画 */
