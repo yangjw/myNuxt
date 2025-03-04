@@ -1,39 +1,51 @@
 <template>
-  <div>
-    <header>
-      <nav class="nav-container">
-        <!-- 左侧导航链接 -->
-        <div class="nav-left">
-          <NuxtLink to="/" class="nav-link">首页</NuxtLink>
-          <NuxtLink to="/about" class="nav-link">关于我们</NuxtLink>
-          <NuxtLink to="/contact" class="nav-link">联系我们</NuxtLink>
-        </div>
+  <div class="layout-container">
+    <!-- 顶部固定导航 -->
+    <div class="fixed-header">
+      <header class="main-header">
+        <nav class="nav-container">
+          <!-- 左侧导航链接 -->
+          <div class="nav-left">
+            <NuxtLink to="/" class="nav-link">首页</NuxtLink>
+            <NuxtLink to="/about" class="nav-link">关于我们</NuxtLink>
+            <NuxtLink to="/contact" class="nav-link">联系我们</NuxtLink>
+          </div>
 
-        <!-- 右侧功能区 -->
-        <div class="nav-right">
-          <NuxtLink to="/login" class="nav-link login-btn">登录</NuxtLink>
-          <div class="app-download">
-            <button class="nav-link app-btn">
-              APP下载
-              <span class="app-icon">📱</span>
-            </button>
-            <!-- 二维码浮层 -->
-            <div class="qr-popup">
-              <img
-                :src="qrImage"
-                alt="APP下载二维码"
-                class="qr-code"
-                loading="lazy"
-                @error="handleImageError"
-              />
-              <p class="qr-text">扫码下载APP</p>
+          <!-- 右侧功能区 -->
+          <div class="nav-right">
+            <NuxtLink to="/login" class="nav-link login-btn">登录</NuxtLink>
+            <!-- APP下载按钮和悬浮框 -->
+            <div class="app-download-wrapper">
+              <button
+                class="app-download-btn"
+                @mouseenter="showAppQR = true"
+                @mouseleave="showAppQR = false"
+              >
+                APP下载
+              </button>
+              <div v-if="showAppQR" class="app-qr-popup">
+                <img
+                  :src="qrImage"
+                  alt="APP二维码"
+                  class="qr-code"
+                  loading="lazy"
+                  @error="handleImageError"
+                />
+                <p class="qr-text">扫码下载APP</p>
+              </div>
             </div>
           </div>
-        </div>
-      </nav>
-    </header>
+        </nav>
+      </header>
 
-    <main>
+      <!-- 分类导航 -->
+      <nav class="category-nav">
+        <slot name="category-nav" />
+      </nav>
+    </div>
+
+    <!-- 主要内容 -->
+    <main class="main-content">
       <slot />
     </main>
 
@@ -58,16 +70,111 @@ const handleImageError = (e: Event) => {
   const img = e.target as HTMLImageElement;
   img.src = fallbackQR;
 };
+
+const showAppQR = ref(false);
 </script>
 
 <style scoped>
-header {
-  padding: 1rem;
-  background-color: #f5f5f5;
-  position: sticky;
+.layout-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.fixed-header {
+  position: fixed;
   top: 0;
-  z-index: 100;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.main-header {
+  position: relative;
+  z-index: 1002;
+  background: white;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.category-nav {
+  position: relative;
+  z-index: 1001;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.main-content {
+  position: relative;
+  z-index: 1;
+  margin-top: 120px;
+  flex: 1;
+  padding: 20px;
+}
+
+.app-qr-popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1003;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  margin-top: 10px;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.qr-code {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+}
+
+.qr-text {
+  margin-top: 10px;
+  color: #666;
+  font-size: 14px;
+}
+
+footer {
+  padding: 1rem;
+  text-align: center;
+  background-color: #f5f5f5;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .main-content {
+    margin-top: 140px; /* 移动端可能需要更大的间距 */
+  }
+
+  .fixed-header {
+    position: fixed;
+  }
+}
+
+/* 添加加载动画 */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+.qr-code:not([src]),
+.qr-code[src=""] {
+  animation: shimmer 1.2s infinite linear;
+  background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
 }
 
 .nav-container {
@@ -116,11 +223,11 @@ header {
 }
 
 /* APP下载按钮样式 */
-.app-download {
+.app-download-wrapper {
   position: relative;
 }
 
-.app-btn {
+.app-download-btn {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -134,91 +241,14 @@ header {
   font-size: 1.2rem;
 }
 
-/* 二维码浮层样式 */
-.qr-popup {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 200px;
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-10px);
-  transition: all 0.3s ease;
-  z-index: 1000;
-}
-
-.app-download:hover .qr-popup {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.qr-code {
-  width: 160px;
-  height: 160px;
-  object-fit: contain;
-  border-radius: 4px;
-  background-color: #f5f5f5;
-}
-
-.qr-text {
-  margin-top: 10px;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-main {
-  min-height: 80vh;
-}
-
-footer {
-  padding: 1rem;
-  text-align: center;
-  background-color: #f5f5f5;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .nav-container {
-    flex-direction: column;
-    gap: 15px;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-
-  .nav-left,
-  .nav-right {
-    width: 100%;
-    justify-content: center;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-
-  .qr-popup {
-    right: 50%;
-    transform: translateX(50%);
-  }
-
-  .qr-popup::before {
-    right: 50%;
-    transform: translateX(50%) rotate(45deg);
-  }
-}
-
-/* 添加加载动画 */
-@keyframes shimmer {
-  0% {
-    background-position: -200px 0;
-  }
-  100% {
-    background-position: 200px 0;
-  }
-}
-
-.qr-code:not([src]),
-.qr-code[src=""] {
-  animation: shimmer 1.2s infinite linear;
-  background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
-  background-size: 200px 100%;
 }
 </style>
